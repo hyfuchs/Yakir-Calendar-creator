@@ -12,7 +12,11 @@ Usage:
 Output CSV columns:
     date_g    - Gregorian date DD/MM/YYYY
     date_h    - Hebrew date (e.g. "כז אלול תשפ"ה")
-    parsha    - Parasha / holiday name (double-parshiot normalized, see below)
+    parsha    - Parasha / holiday name. Ordinary Shabbatot use the PDF text
+                (double-parshiot normalized, see below). On a yom-tov that displaces
+                the weekly reading (ראש השנה, יום כיפור, סוכות, שמיני עצרת, פסח,
+                שבועות) the PDF text is unreliable, so the name is derived from the
+                date via pyluach (Israel schedule) instead. See holiday_name_for_date().
     candles   - הדלקת נרות (HH:MM or "-----")
     shkia     - שקיעה sunset (HH:MM)
     motzash   - מוצאי שבת (HH:MM or "-----")
@@ -27,6 +31,7 @@ year's PDF needs no manual fix. See RULES.md, Tool 1 section.
 
 import argparse
 import csv
+import datetime
 import os
 import re
 import sys
@@ -36,6 +41,18 @@ try:
 except ImportError:
     print("ERROR: pymupdf not installed. Run: pip install pymupdf", file=sys.stderr)
     sys.exit(1)
+
+# pyluach is OPTIONAL here: it's used only to give holiday Shabbatot a correct
+# parsha name (the PDF text is unreliable on those, e.g. 'א' for ראש השנה). If it's
+# missing we WARN and fall back to the raw PDF text — the parser must never
+# hard-fail on this enhancement (unlike make_skeleton_csv.py, which requires it).
+try:
+    from pyluach import dates as _hdates, parshios as _parshios
+    _HAVE_PYLUACH = True
+except ImportError:
+    _HAVE_PYLUACH = False
+    print("WARNING: pyluach not installed; holiday-Shabbat parsha names fall back "
+          "to raw PDF text. Run: pip install pyluach", file=sys.stderr)
 
 # ── default paths ──────────────────────────────────────────────────────────────
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
@@ -101,6 +118,35 @@ def detect_holiday(parsha):
         if keyword in parsha:
             return code
     return ""
+
+
+def holiday_name_for_date(date_g):
+    """Return the pyluach (Israel-schedule) holiday name for a date that DISPLACES
+    the weekly Torah reading, else "". Used to override the unreliable PDF parsha
+    text on yom-tov Shabbatot (the PDF gave 'א' for 1 Tishrei / ראש השנה).
+
+    SAFE PREDICATE — override only when BOTH hold:
+      • the date has NO weekly parsha (getparsha_string is None), AND
+      • pyluach reports a holiday on it.
+    This intersection isolates the displacing yom-tovim (ראש השנה, יום כיפור,
+    סוכות, שמיני עצרת, פסח, שבועות) while leaving alone:
+      • ordinary parshiot — different PDF spellings like שלח לך / פנחס are kept, and
+      • minor holidays that fall ON a normal parsha Shabbat (Chanukah, ט״ו בשבט),
+        where getparsha_string is truthy so we keep the PDF parsha.
+    Returns the RAW pyluach name (no HOLIDAY_NAME_MAP remap — that belongs to the
+    render layer). Robust to a missing pyluach or a malformed date → "".
+    """
+    if not _HAVE_PYLUACH:
+        return ""
+    try:
+        d = datetime.datetime.strptime(date_g, "%d/%m/%Y").date()
+    except (ValueError, TypeError):
+        return ""
+    g = _hdates.GregorianDate(d.year, d.month, d.day)
+    if _parshios.getparsha_string(g, hebrew=True, israel=True) is not None:
+        return ""   # has a weekly parsha (ordinary Shabbat, or Chanukah/Tu-BiShvat) → keep PDF
+    hol = g.to_heb().holiday(hebrew=True, israel=True)
+    return hol or ""
 
 
 def is_time(s):
@@ -240,7 +286,16 @@ def parse_pdf(pdf_path, debug=False):
             if cand_before and cand_after:
                 parsha_raw, heb_date = (cand_before, cand_after)
 
-        parsha  = normalize_parsha(_clean_quotes(parsha_raw))
+        # Holiday-Shabbat override: on a yom-tov that displaces the weekly reading,
+        # the PDF parsha text is unreliable (e.g. 'א' for ראש השנה), so use the
+        # pyluach holiday name instead. Ordinary Shabbatot keep the PDF parsha
+        # (including normalize_parsha's double-parsha RTL fix). Never run
+        # normalize_parsha on the pyluach name (it's a single, correctly-ordered token).
+        hol_name = holiday_name_for_date(date_g)
+        if hol_name:
+            parsha = hol_name
+        else:
+            parsha = normalize_parsha(_clean_quotes(parsha_raw))
         heb_date = _clean_quotes(heb_date)
         holiday  = detect_holiday(parsha)
 

@@ -7,7 +7,38 @@ Per-year data + outputs now live in a year folder, e.g. `../Yakir-calendar-2026-
 
 ---
 
-## 2026-08-04 SESSION (part 11) — --year flag, font-host bug, Tishrei fit, festival timings, holiday names, batch file
+## 2026-08-05 SESSION (part 12) — holiday parsha names fixed at PARSE time
+
+### Problem
+5787 CSV first row (1 Tishrei) showed `parsha=א`, `holiday=` (empty). The municipality PDF is
+inconsistent year to year; for 5787 it wrote just `א` for Rosh Hashana, so the text-only parser
+mislabeled it and `detect_holiday` found no keyword. The render layer (`display_name`) already
+corrected the *printed* calendar, but the *CSV* was wrong.
+
+### Fix — `parse_modiin_pdf.py` only
+- Added a **guarded, optional** pyluach import (WARN + fall back to PDF text if missing — never
+  hard-fails, unlike make_skeleton_csv.py which requires it).
+- New helper `holiday_name_for_date(date_g)`: returns the pyluach Israel holiday name ONLY when the
+  date both (a) has no weekly parsha (`getparsha_string is None`) AND (b) `holiday()` is truthy.
+  This AND-predicate is the key safety: it isolates the displacing yom-tovim (RH/YK/Sukkot/Shemini
+  Atzeret/Pesach/Shavuot) while leaving alone ordinary parshiot AND minor-holiday Shabbatot
+  (Chanukah, Tu BiShvat) that keep a normal parsha.
+- Wired into `parse_pdf`: on a holiday date use the pyluach name (raw — NO `normalize_parsha`, NO
+  `HOLIDAY_NAME_MAP`; render layer owns display remaps); otherwise keep the existing
+  `normalize_parsha(_clean_quotes(parsha_raw))` path unchanged. `detect_holiday(parsha)` then yields
+  the code for free.
+
+### Why low risk (verified)
+- Rendered calendar is byte-identical whether CSV holds old PDF text or new pyluach name (render
+  transforms sit on top) — so this is cosmetic to the CSV, cannot change what prints.
+- Did NOT blanket-replace parsha: pyluach spells some ordinary parshiot differently (שלח לך→שלח,
+  פנחס→פינחס) — those are the congregation's authoritative PDF spellings and are preserved.
+- Verified 5787: 12/09→ראש השנה/RH, 21/09→יום כיפור/YK, 26/09→סוכות/SUK, 03/10→שמיני עצרת/SMI,
+  24/04→פסח/PES; שלח לך, פנחס, וישב (Chanukah), בשלח (Tu BiShvat) all UNCHANGED. 5786 regen: 59 rows,
+  ordinary parshiot intact. Full pipeline (weeks→render Tishrei) still builds; ±2min gate passes.
+- Render-time `display_name()` fix kept as defense-in-depth.
+
+
 
 ### `--year` flag on yakir_calendar.py (whole-year generation)
 - Was: type all hyrmo keys (`--hyrmo 578701 … 578713`) and you had to KNOW it's a leap year (13 keys).
