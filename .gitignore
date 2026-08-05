@@ -1,0 +1,28 @@
+# ── Python cache ──────────────────────────────────────────────
+__pycache__/
+*.pyc
+
+# ── Generated calendar outputs (produced by yakir_calendar.py) ─
+# Word + PDF calendars, any version/month/year naming.
+yakir_*.docx
+yakir_*.pdf
+yakir_calendar_*.docx
+yakir_calendar_*.pdf
+*_all_months.docx
+
+# ── Generated column guide (produced from the .md by md_to_docx.py)
+modiin_weeks_column_guide.docx
+
+# ── Generated data (regenerated from the PDF each run) ────────
+# parser / skeleton output
+modiin_calendar.csv
+# modiin_weeks.py output
+modiin_weeks.csv
+
+# ── Source input data (large binaries — excluded per decision) ─
+*.pdf
+
+# ── Local-only: backups, caches, scratch, editor/tool state ──
+_backups/
+OLD-Drafts-DELETE-ME/
+.claude/

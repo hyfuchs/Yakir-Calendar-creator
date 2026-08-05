@@ -1,0 +1,12 @@
+# Yakir Calendar Creator — Python dependencies
+# Install with:  pip install -r requirements.txt
+#
+# Note: openpyxl is only needed for the legacy XLS validation path; the live
+# CSV-driven pipeline does not require it, but it's kept for the optional --source xls
+# fallback in yakir_calendar.py.
+
+pymupdf>=1.24        # PDF parsing (imported as "fitz") — parse_modiin_pdf.py
+ephem>=4.1           # sun times (sunset/sunrise) — modiin_weeks.py, yakir_calendar.py
+pyluach>=2.2         # Hebrew dates, parshiot, holidays — modiin_weeks.py, yakir_calendar.py
+python-docx>=1.1     # Word .docx generation — yakir_calendar.py
+openpyxl>=3.1        # legacy XLS read (validation / --source xls only)
