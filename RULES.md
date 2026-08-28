@@ -431,10 +431,11 @@ computed time has a `_calc` column plus a `_adj` manual-override column (adj win
 |---|---|---|
 | Sukkot, Tishrei 15-21 (1st day OR chol hamoed) | שחרית 1 → **6:15** (Kohelet is long); **no 17:15** Sharbat mincha | `sukkot_shabbat()` |
 | שבת חול המועד פסח (Nissan 16-20) | שחרית 1 → **6:30** | `chol_hamoed_shabbat()` |
-| שמחת תורה (Tishrei 22) **or** Pesach 1st day (Nissan 15) on Shabbat | שחרית 1, שחרית 2, **and** the מנחה שבת string all left **BLANK** (special festival timetable, filled manually); no 17:15 | `yomtov_no_minyan_shabbat()` |
+| ראש השנה (Tishrei 1-2), יום כיפור (Tishrei 10), שמחת תורה (Tishrei 22) **or** Pesach 1st day (Nissan 15) on Shabbat | שחרית 1, שחרית 2, **and** the מנחה שבת string all left **BLANK** (special festival timetable, filled manually); no 17:15 | `yomtov_no_minyan_shabbat()` |
 
-The `_adj` columns still handle any other one-off holiday fix. Other holidays (Yom Kippur, etc.)
-use the congregation's dedicated timetables and are not rendered on this monthly sheet.
+The `_adj` columns still handle any other one-off holiday fix. When one of the
+no-minyan festivals above falls on Shabbat, its row is still rendered but the service
+times are left blank for manual fill (the congregation uses dedicated timetables those days).
 
 **Mincha erev shabbat is derived, not stored.** It equals `mincha_ktana + 10 min`, computed
 by `yakir_calendar.py` at render time from the *resolved* ktana (adj if set, else calc). This

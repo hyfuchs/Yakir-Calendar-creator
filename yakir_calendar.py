@@ -451,12 +451,15 @@ def sukkot_shabbat(greg_date):
 def yomtov_no_minyan_shabbat(greg_date):
     """True for a festival day on Shabbat whose regular minyan schedule does NOT
     apply, so shacharit (both) and Shabbat mincha are left BLANK for manual fill:
-    Shemini Atzeret / Simchat Torah (Tishrei 22) and Pesach 1st day (Nissan 15).
+      - Rosh Hashana (Tishrei 1-2)
+      - Yom Kippur (Tishrei 10)
+      - Shemini Atzeret / Simchat Torah (Tishrei 22)
+      - Pesach 1st day (Nissan 15)
     (pyluach months: Tishrei = 7, Nissan = 1.)"""
     if greg_date.weekday() != 5:
         return False
     h = _hebdates.GregorianDate(greg_date.year, greg_date.month, greg_date.day).to_heb()
-    return (h.month == 7 and h.day == 22) or (h.month == 1 and h.day == 15)
+    return (h.month == 7 and h.day in (1, 2, 10, 22)) or (h.month == 1 and h.day == 15)
 
 
 # Conditional note texts (see RULES.md).
@@ -924,9 +927,9 @@ def build_page(doc, month, logo_path, is_first, mincha_tbl=None, shabbat_tbl=Non
         motzash_val = blk.get("motzash")  or ft(sb.get("motzsh"))
 
         shach2_val = str(sb.get("shach2") or "").strip() or "8:30"   # constant
-        # שמחת תורה / Pesach 1st day on Shabbat: the regular minyan schedule does not
-        # apply — leave BOTH shacharit times and the Shabbat mincha string BLANK for
-        # manual fill (special festival timetable).
+        # Rosh Hashana / Yom Kippur / שמחת תורה / Pesach 1st day on Shabbat: the
+        # regular minyan schedule does not apply — leave BOTH shacharit times and
+        # the Shabbat mincha string BLANK for manual fill (special festival timetable).
         if is_no_minyan:
             shach1_val = ""
             shach2_val = ""
