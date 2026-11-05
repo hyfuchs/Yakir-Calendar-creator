@@ -123,7 +123,7 @@ One row per week, anchored on its Saturday. Weekday span = preceding Sun–Thu
 | `sharbat_mincha` | yes/no — summer 17:15 mincha (Yair Sharbat); "yes" if candles **> 18:00** |
 | `shabbat_mincha_ktana_calc` | COMPUTED late Shabbat mincha = floor_to_5(candles) |
 | `shabbat_mincha_ktana_adj` | MANUAL override; wins over `_calc` |
-| `shacharit1` | Shacharit-1: blank → default 6:45; fill to override (e.g. RC 6:30) |
+| `shacharit1` | Shacharit-1: blank → default 6:45; Shabbat of Hanukkah and Shabbat Rosh Chodesh are **auto-set to 6:30** (no CSV entry needed); fill to override any other Shabbat |
 | `sof_zman_shma_calc` | COMPUTED sof zman shma (GRA) via ephem, calibrated (MAE 0.36 min) |
 | `sof_zman_shma_adj` | MANUAL override; wins over `_calc` |
 | `sunset_rabanut` | Official Saturday sunset from Modiin PDF (shkia) |
@@ -202,6 +202,14 @@ detects these via pyluach (Saturday + holiday `סוכות` Tishrei 16–21, or `
   used in the adjacent week-labels).
 - **Overrides shacharit-1** → Sukkot **6:15**, Pesach **6:30** (default is 6:45). The "bold when ≠ 6:45"
   rule then bolds these, correctly flagging them as exceptions.
+
+Additional automatic shacharit-1 overrides (also → **6:30**, also bolded):
+- **Shabbat of Hanukkah** — detected via `hanukkah_shabbat()`: `holiday()==חנוכה` for the
+  Shabbat. Some years have two Hanukkah Shabbatot; both are covered. The Kislev 30 / Rosh
+  Chodesh Tevet overlap is handled automatically (still 6:30).
+- **Shabbat Rosh Chodesh** — detected via `rosh_chodesh_shabbat()`: Hebrew day 1 or day 30
+  (first day of a 2-day Rosh Chodesh; mirrors `_rosh_chodesh_dates` day-1/day-30 logic).
+  Rosh Hashana (Tishrei 1–2) is excluded — it is a no-minyan yom tov handled separately.
 
 Note: the Sukkot **1st day** on Shabbat (Tishrei 15) is NOT Chol HaMoed, so it shows the holiday name
 `סוכות` (rule 2 above) — but it still gets שחרית 6:15 and no 17:15, via `sukkot_shabbat()` (§5).
@@ -418,7 +426,7 @@ computed time has a `_calc` column plus a `_adj` manual-override column (adj win
 | מנחה שבת ktana (`shabbat_mincha_ktana_calc`) | `floor_to_5(candles)` | computed + `_adj` |
 | מנחה וקבלת שבת (erev shabbat) | `mincha_ktana + 10 min` — **derived at render, not stored**; tracks any ktana override | derived (generator) |
 | סוף זמן קריאת שמע (`sof_zman_shma_calc`) | GRA: `sunrise + (sunset−sunrise)/4` via ephem (MAE 0.36 min vs OU) | computed + `_adj` |
-| שחרית שבת 1 (`shacharit1`) | blank → default **6:45**; fill to override (e.g. Rosh Chodesh 6:30) | manual (default in code) |
+| שחרית שבת 1 (`shacharit1`) | blank → default **6:45**; Shabbat of Hanukkah and Shabbat Rosh Chodesh are **auto-set to 6:30** (no CSV entry needed); fill to override any other Shabbat | auto (default in code) |
 | תאריך עברי (`taarich`) | Hebrew day + month, e.g. `ה׳ תשרי` | pyluach |
 
 **Constants (in code, NOT CSV columns):**

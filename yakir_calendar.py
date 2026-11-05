@@ -462,6 +462,32 @@ def yomtov_no_minyan_shabbat(greg_date):
     return (h.month == 7 and h.day in (1, 2, 10, 22)) or (h.month == 1 and h.day == 15)
 
 
+def hanukkah_shabbat(greg_date):
+    """True if this Shabbat falls during Hanukkah (Kislev 25 - Tevet 2/3).
+    Shacharit-1 is 6:30. Some years have two such Shabbatot; pyluach's holiday()
+    returns 'חנוכה' for every Hanukkah day (incl. a day that is also Rosh Chodesh
+    Tevet), so both are detected automatically."""
+    if greg_date.weekday() != 5:   # 5 = Saturday
+        return False
+    h = _hebdates.GregorianDate(greg_date.year, greg_date.month, greg_date.day).to_heb()
+    return h.holiday(hebrew=True, israel=True) == "חנוכה"
+
+
+def rosh_chodesh_shabbat(greg_date):
+    """True if this Shabbat is Rosh Chodesh. Shacharit-1 is 6:30.
+    Rosh Chodesh = Hebrew day 1, or day 30 (the first day of a 2-day Rosh Chodesh).
+    pyluach's holiday() does NOT report Rosh Chodesh, so detection is by day number
+    (same day-1/day-30 logic as _rosh_chodesh_dates). Rosh Hashana (Tishrei 1-2) is a
+    no-minyan yom tov, NOT a regular Rosh Chodesh, so it is excluded.
+    (pyluach month: Tishrei = 7.)"""
+    if greg_date.weekday() != 5:   # 5 = Saturday
+        return False
+    h = _hebdates.GregorianDate(greg_date.year, greg_date.month, greg_date.day).to_heb()
+    if h.month == 7 and h.day in (1, 2):   # Rosh Hashana — not a regular Rosh Chodesh
+        return False
+    return h.day in (1, 30)
+
+
 # Conditional note texts (see RULES.md).
 CHANUKAH_NOTE = "בחנוכה תפילת ערבית ראשונה כ-20 דקות אחרי השקיעה"
 SCHOOL_NOTE   = "בחופשות בתי הספר, מתקיים לרוב מניין שחרית נוסף בימים א-ה בשעה 8:45"
@@ -904,6 +930,10 @@ def build_page(doc, month, logo_path, is_first, mincha_tbl=None, shabbat_tbl=Non
                 shach1_val = chm["shach1"]
             elif is_sukkot:
                 shach1_val = "6:15"
+            elif hanukkah_shabbat(d0):
+                shach1_val = "6:30"
+            elif rosh_chodesh_shabbat(d0):
+                shach1_val = "6:30"
 
         date_str = ""
         if isinstance(dv, (datetime.date, datetime.datetime)):
