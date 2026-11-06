@@ -260,9 +260,19 @@ HaMoed Shabbatot (already relabeled).
 - **Chanukah note** (Kislev only): a 2nd left-cell line under the arvit footnote —
   `בחנוכה תפילת ערבית ראשונה כ-20 דקות אחרי השקיעה` (`CHANUKAH_NOTE`). Detected by month **name**
   (`"כסלו" in chodesh`), not number.
-- **School-vacation note** (`SCHOOL_NOTE`): under the Shacharit table (supports it — gap after, not
-  before). Shown on Tishrei + Nissan always, plus any month with a Shabbat date in **21 Jun – 31 Aug**
-  (→ Tammuz, Av, Elul).
+- **School-vacation Shacharit notes**: one or more lines under the Shacharit table in the
+  right cell. Each note is rendered as three runs (prefix / **bold vacation-type word** / suffix)
+  so the type word is bold. A month may show several lines. Order when multiple apply: summer
+  first, then post-Yom-Kippur, then Chanukah, then Pesach.
+
+  | Vacation | Type word (bold) | Full text | Time | Detection |
+  |---|---|---|---|---|
+  | Summer | **הקיץ** | בפגרת **הקיץ** בבתי הספר, מתקיים לרוב מניין שחרית נוסף בימים א-ה בשעה 8:45 | 8:45 | Any Shabbat date in 21 Jun–31 Aug (`_summer`) |
+  | Post-Yom-Kippur | **לאחר יום כיפור** | בימי הפגרה **לאחר יום כיפור**, מתקיים לרוב מניין שחרית נוסף בימים א-ה בשעה 8:30 | 8:30 | `"תשרי" in chodesh` |
+  | Chanukah | **חנוכה** | בפגרת **חנוכה**, מתקיים לרוב מניין שחרית נוסף בימים א-ה בשעה 8:30 | 8:30 | `month_has_chanukah_weekday(year, py_mo)` — True for Kislev always; also Tevet in spill-over years |
+  | Pesach | **פסח** | בפגרת **פסח**, מתקיים לרוב מניין שחרית נוסף בימים א-ה בשעה 8:30 | 8:30 | `"ניסן" in chodesh` |
+
+  No space precedes the comma in any line.
 
   > **Leap-year rule (important):** Tishrei/Nissan are detected by month **NAME** (`"תשרי"`/`"ניסן"`
   > in `month["chodesh"]`), NOT by number. In a leap year Nissan is month **8** (7 = Adar II), so the

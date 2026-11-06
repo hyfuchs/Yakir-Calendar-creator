@@ -490,7 +490,29 @@ def rosh_chodesh_shabbat(greg_date):
 
 # Conditional note texts (see RULES.md).
 CHANUKAH_NOTE = "בחנוכה תפילת ערבית ראשונה כ-20 דקות אחרי השקיעה"
-SCHOOL_NOTE   = "בחופשות בתי הספר, מתקיים לרוב מניין שחרית נוסף בימים א-ה בשעה 8:45"
+# School-vacation notes: (prefix, bold_segment, suffix) → rendered as 3 runs so the
+# vacation-type word is bold. No bold word has a trailing space and each suffix starts
+# directly with the comma, so no space ever precedes the comma. A month may show several.
+_SCHOOL_SUF_830 = ", מתקיים לרוב מניין שחרית נוסף בימים א-ה בשעה 8:30"
+SCHOOL_NOTE_SUMMER = ("בפגרת ", "הקיץ", " בבתי הספר, מתקיים לרוב מניין שחרית נוסף בימים א-ה בשעה 8:45")
+SCHOOL_NOTE_YOMKIPPUR = ("בימי הפגרה ", "לאחר יום כיפור", _SCHOOL_SUF_830)
+SCHOOL_NOTE_CHANUKAH = ("בפגרת ", "חנוכה", _SCHOOL_SUF_830)
+SCHOOL_NOTE_PESACH = ("בפגרת ", "פסח", _SCHOOL_SUF_830)
+
+
+def month_has_chanukah_weekday(heb_year, py_mo):
+    """True if this Hebrew month (pyluach py_mo) contains a Chanukah day that falls
+    on a weekday (Sun-Thu) — i.e. the month overlaps the Chanukah school vacation.
+    Covers Kislev always, and Tevet in years where Chanukah spills over into it.
+    (Python weekday: Sun=6, Mon=0, Tue=1, Wed=2, Thu=3.)"""
+    month = _hebcal.Month(heb_year, py_mo)
+    for day in range(1, len(month) + 1):
+        g = _greg(_hebdates.HebrewDate(heb_year, py_mo, day))
+        if g.weekday() in (6, 0, 1, 2, 3):
+            h = _hebdates.GregorianDate(g.year, g.month, g.day).to_heb()
+            if h.holiday(hebrew=True, israel=True) == "חנוכה":
+                return True
+    return False
 
 
 def _pyluach_month(heb_year, tishrei_month_num):
@@ -816,17 +838,25 @@ def build_page(doc, month, logo_path, is_first, mincha_tbl=None, shabbat_tbl=Non
 
     # Conditional notes for this month:
     chodesh = str(month.get("chodesh") or "").strip()
-    is_kislev = ("כסלו" in chodesh)   # name-based (leap-year safe)
-    # School-vacation note: Tishrei + Nissan always, plus any summer month that has a
-    # Shabbat between 21 Jun and 31 Aug. Detect Tishrei/Nissan by NAME, not month
-    # number: in a LEAP year Nissan is month 8 (7 = Adar II), so the old numeric
-    # `heb_mo in (1,7)` put the note on Adar II and missed Nissan. (HCV bug: אדר ב׳
-    # page wrongly showed בחופשות בתי הספר.)
-    is_tishrei_or_nissan = ("תשרי" in chodesh) or ("ניסן" in chodesh)
+    is_kislev = ("כסלו" in chodesh)   # name-based (leap-year safe); still used for arvit note
+    # School-vacation notes: detect each type independently and collect in print order.
+    # Tishrei/Nissan detected by NAME (not month number) — leap-year safe: in a leap year
+    # Nissan is month 8 (7 = Adar II), so numeric detection would hit the wrong month.
+    is_tishrei = ("תשרי" in chodesh)
+    is_nissan  = ("ניסן" in chodesh)
     _dates = [sb.get("date") for sb in shabbatot
               if isinstance(sb.get("date"), (datetime.date, datetime.datetime))]
     _summer = any((d.month, d.day) >= (6, 21) and (d.month, d.day) <= (8, 31) for d in _dates)
-    show_school = is_tishrei_or_nissan or _summer
+    chanukah = False
+    if _dates:
+        d0 = _dates[0]; d0 = d0.date() if isinstance(d0, datetime.datetime) else d0
+        h0 = _hebdates.GregorianDate(d0.year, d0.month, d0.day).to_heb()
+        chanukah = month_has_chanukah_weekday(h0.year, h0.month)
+    school_notes = []
+    if _summer:    school_notes.append(SCHOOL_NOTE_SUMMER)
+    if is_tishrei: school_notes.append(SCHOOL_NOTE_YOMKIPPUR)
+    if chanukah:   school_notes.append(SCHOOL_NOTE_CHANUKAH)
+    if is_nissan:  school_notes.append(SCHOOL_NOTE_PESACH)
 
     # ── HEADER (logo | title | בס״ד) ──────────────────────────────────────────
     ht = doc.add_table(rows=1, cols=3)
@@ -1132,16 +1162,18 @@ def build_page(doc, month, logo_path, is_first, mincha_tbl=None, shabbat_tbl=Non
 
     _tbl_borders(sht)
 
-    # School-vacation note — relates to the Shacharit table (extra weekday minyan
-    # during school breaks). Right cell, directly under the table, above the events.
-    # Shown on Tishrei/Nissan + summer months (see show_school). align=None → RTL
-    # right alignment via bidi (explicit jc=right renders left).
-    # REUSE the empty paragraph python-docx leaves after the shacharit table (a table
-    # can't be a cell's last element) — avoids an empty line before the note.
-    if show_school:
-        ps = right_cell.paragraphs[-1]
-        _bidi_para(ps); _spacing(ps, 0, 4)   # snug under the table it supports; gap AFTER
-        _run(ps, SCHOOL_NOTE, F_ARIAL, 11)
+    # School-vacation notes — one line per applicable vacation, directly under the
+    # Shacharit table in the right cell. Each note has a bold type word (middle run).
+    # The first note reuses the empty paragraph python-docx leaves after the table
+    # (a table can't be a cell's last element) — avoids a blank line before the note.
+    # Subsequent notes each add a new paragraph. align=None → RTL right-align via bidi.
+    if school_notes:
+        for i, (pre, bold, suf) in enumerate(school_notes):
+            ps = right_cell.paragraphs[-1] if i == 0 else right_cell.add_paragraph()
+            _bidi_para(ps); _spacing(ps, 0, 4)
+            _run(ps, pre,  F_ARIAL, 11)
+            _run(ps, bold, F_ARIAL, 11, bold=True)
+            _run(ps, suf,  F_ARIAL, 11)
 
     # ── Events (holidays + Rosh Chodesh) — INSIDE the שחרית (right) cell, below the
     # shacharit table. Rendered as a borderless single-column RTL table (bidiVisual),
